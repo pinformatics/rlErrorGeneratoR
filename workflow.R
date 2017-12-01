@@ -1,13 +1,30 @@
 library(charlatan)
 library(stringr)
 library(tidyverse)
+devtools::load_all(".")
+
+set.seed(1)
 
 dt_a <- ch_generate("name", "job", "phone_number")
 class(dt_a$phone_number) <- c("number",class(dt_a$phone_number))
-error_table <- tribble(~error, ~amount,~col_names,
-                      "indel", 45,"name, job, phone_number",
-                      "repl",50,"name, phone_number"
+error_table <- tribble(~error, ~amount, ~col_names, ~arguments,
+                       "first_letter_abbreviate",5,"job","",
+                       "invert_real_and_nicknames",5,"name","",
+                       "nick_to_realnames",5,"name","",
+                      "real_to_nicknames",5,"name","",
+                      "indel", 2,"name, job, phone_number","",
+                      "repl",2,"name, phone_number","",
+                      "transpose",3,"name, phone_number",""
                       )
+
+dt_a <-
+  dt_a %>%
+  mutate(name = c("Jonathan", "Chris", "Richard", name)[1:nrow(dt_a)])
+
+dt_a <- dt_a %>%
+  prep_data() %>%
+  pluck("df_original")
+
 (error_result <-
   dt_a %>%
   prep_data() %>%
@@ -15,9 +32,9 @@ error_table <- tribble(~error, ~amount,~col_names,
 
 error_record <- attr(error_result$df_secondary, "error_record")
 error_record %>%
-  count(id, field, sort = T)
+  count(error, sort = T)
 
 error_record %>%
-  filter(id == 3, field == "phone_number") %>%
+  filter(id == 4, field == "phone_number") %>%
   mutate(dist = stringdist::stringdist(lag(after),after))
 stringdist::stringdist("258.547.3512x17250", "258.5403713556317255")

@@ -1,0 +1,3 @@
+error,amount,col_names
+indel,45,"name, job, phone_number"
+repl,50,"name, phone_number"
