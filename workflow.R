@@ -8,6 +8,10 @@ set.seed(1)
 dt_a <- ch_generate("name", "job", "phone_number")
 class(dt_a$phone_number) <- c("number",class(dt_a$phone_number))
 error_table <- tribble(~error, ~amount, ~col_names, ~arguments,
+                       "swap_fields",5,"name, job","",
+                       "blanks_to_hyphens",5,"name","all = T",
+                       "hyphens_to_blanks",5,"name","all = F",
+                       "ch1_to_ch2",5,"name","all = T, ch1 = ' ', ch2 = '#'",
                        "first_letter_abbreviate",5,"job","",
                        "invert_real_and_nicknames",5,"name","",
                        "nick_to_realnames",5,"name","",
@@ -31,6 +35,7 @@ dt_a <- dt_a %>%
   mess_data(error_table))
 
 error_record <- attr(error_result$df_secondary, "error_record")
+View(error_record)
 error_record %>%
   count(error, sort = T)
 

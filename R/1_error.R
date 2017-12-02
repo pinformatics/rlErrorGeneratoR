@@ -9,6 +9,9 @@ prep_data <- function(df_original) {
            id = row_number()) %>%
     select(file, id, everything())
 
+  df_original <-
+    map_df(df_original, str_to_lower)
+
   df_secondary <-
     df_original %>%
     mutate(file = "B")
@@ -18,9 +21,7 @@ prep_data <- function(df_original) {
             class = "df_pairs")
 }
 
-indel <- function(x, ...){
-  UseMethod("indel")
-}
+
 
 update_error_record <- function(df, ids, field, error, before, after){
   error_record <- tibble(id = ids, field = field, error = error,
