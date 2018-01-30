@@ -2,7 +2,7 @@
 
 
 
-married_name_change <- function(df, n_errors, lname, sex = NULL, dob = NULL, age = NULL){
+married_name_change <- function(df, n_errors, col_names, lname, sex, dob = NULL, age = NULL){
   df_s <- df[df[[sex]] == "f",]
 
   if(!is.null(dob)){
@@ -22,8 +22,7 @@ married_name_change <- function(df, n_errors, lname, sex = NULL, dob = NULL, age
 
   old_lnames <- df[[lname]][df$id %in% candidate_ids]
   new_names <- lnames_all %>%
-    sample_n(length(candidate_ids)) %>%
-    pull(lastname)
+    sample(length(candidate_ids))
 
   df[df$id %in% candidate_ids, lname] <- new_names
 
