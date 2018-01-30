@@ -29,6 +29,10 @@ dt_a <- dt_a %>%
   prep_data() %>%
   pluck("df_original")
 
+
+
+dt_a$sex = sample(c("f","m"), nrow(dt_a), replace = T)
+
 (error_result <-
   dt_a %>%
   prep_data() %>%
