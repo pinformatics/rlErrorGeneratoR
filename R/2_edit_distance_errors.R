@@ -31,7 +31,7 @@ indel.data.frame <- function(df, n_errors, col_names){
 }
 
 indel.character <- function(error_strings){
-  map_chr(error_strings, indel.default, LETTERS)
+  map_chr(error_strings, indel.default, letters)
 }
 
 indel.numeric <- function(error_strings){
@@ -43,7 +43,7 @@ indel.number <- function(error_strings){
 }
 
 
-indel.default <- function(edit_string,  error_chars = LETTERS, fix_len = FALSE){
+indel.default <- function(edit_string,  error_chars = letters, fix_len = FALSE){
   len <- str_length(edit_string)
 
   if(runif(1) > 0.5){
@@ -108,8 +108,8 @@ repl.data.frame <- function(df, n_errors, col_names){
 }
 
 repl.character <- function(error_strings){
-  # repl(error_strings, LETTERS)
-  map_chr(error_strings, repl.default, LETTERS)
+  # repl(error_strings, letters)
+  map_chr(error_strings, repl.default, letters)
 }
 
 repl.numeric <- function(error_strings){
@@ -123,7 +123,7 @@ repl.number <- function(error_strings){
 }
 
 
-repl.default <- function(edit_string, error_chars = LETTERS){
+repl.default <- function(edit_string, error_chars = letters){
   repl_index <- sample(1:str_length(edit_string), 1)
 
   edit_string <- edit_string %>%
@@ -173,7 +173,7 @@ transpose.data.frame <- function(df, n_errors, col_names){
 }
 
 transpose.default <- function(error_strings){
-  # transpose(error_strings, LETTERS)
+  # transpose(error_strings, letters)
   map_chr(error_strings, transpose.base)
 }
 

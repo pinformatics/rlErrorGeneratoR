@@ -9,12 +9,16 @@ prep_data <- function(df_original) {
            id = row_number()) %>%
     select(file, id, everything())
 
+  # df_original <-
+  #   map_df(df_original, str_to_lower)
+
   df_original <-
-    map_df(df_original, str_to_lower)
+    df_original %>%
+    mutate_if(is.character, str_to_lower)
 
   df_secondary <-
     df_original %>%
-    mutate(file = "B")
+    mutate(file = "b")
 
   structure(list(df_original = df_original,
                  df_secondary = df_secondary),

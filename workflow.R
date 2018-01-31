@@ -9,37 +9,37 @@ devtools::load_all(".")
 
 
 #https://www.randomlists.com/random-addresses
-split_exp <- "," %R% SPACE %R%
-  UPPER %R% UPPER %R%
-  SPACE %R% DIGIT %R% DIGIT %R% DIGIT %R% DIGIT %R% DIGIT
-
-pin_st <- addresses %>% str_extract_all(split_exp) %>%.[[1]]
-
-addresses_1 <-
-  addresses %>%
-  str_split(split_exp) %>%
-  .[[1]] %>%
-  str_trim() %>%
-  str_replace_all(NEWLINE, "")%>%
-  str_replace_all("  ", "")
-
-
-(addr <-
-  tibble(full_address = addresses_1) %>%
-  filter(str_length(full_address) > 1) %>%
-  mutate(
-    full_address =str_c(full_address, pin_st),
-    zip = str_extract(full_address, one_or_more(DIGIT) %R% END),
-    state = str_match_all(full_address,
-                            "," %R% SPACE %R%
-                              capture(UPPER %R% UPPER)
-                            %R% SPACE %R% one_or_more(DIGIT) %R% END) %>%
-            map_chr(~.x[1,2]),
-    street_address = str_replace(full_address, pin_st,"")
-  ))
-
-address_tbl <- addr
-
+# split_exp <- "," %R% SPACE %R%
+#   UPPER %R% UPPER %R%
+#   SPACE %R% DIGIT %R% DIGIT %R% DIGIT %R% DIGIT %R% DIGIT
+#
+# pin_st <- addresses %>% str_extract_all(split_exp) %>%.[[1]]
+#
+# addresses_1 <-
+#   addresses %>%
+#   str_split(split_exp) %>%
+#   .[[1]] %>%
+#   str_trim() %>%
+#   str_replace_all(NEWLINE, "")%>%
+#   str_replace_all("  ", "")
+#
+#
+# (addr <-
+#   tibble(full_address = addresses_1) %>%
+#   filter(str_length(full_address) > 1) %>%
+#   mutate(
+#     full_address =str_c(full_address, pin_st),
+#     zip = str_extract(full_address, one_or_more(DIGIT) %R% END),
+#     state = str_match_all(full_address,
+#                             "," %R% SPACE %R%
+#                               capture(UPPER %R% UPPER)
+#                             %R% SPACE %R% one_or_more(DIGIT) %R% END) %>%
+#             map_chr(~.x[1,2]),
+#     street_address = str_replace(full_address, pin_st,"")
+#   ))
+#
+# address_tbl <- addr
+#
 set.seed(1)
 
 n <- 100
@@ -53,8 +53,6 @@ dt_a <-
                ifelse(x =="f", sample(fnames_female, 1), sample(fnames_male,1))
            }),
           phone = r_phone_numbers(n),
-         lat = r_longitudes(n),
-         lon = r_latitudes(n),
          ssn = r_national_identification_numbers(n),
          job = ch_generate("job", n = n) %>% pull(job),
          credit_card = r_credit_card_numbers(n),
@@ -73,7 +71,8 @@ error_table <- tribble(~error, ~amount, ~col_names, ~arguments,
                       "indel", 20,"lname","",
                       "repl",20,"fname","",
                       "transpose",20,"lname, fname","",
-                      "married_name_change",20,"lname","lname = 'lname', sex = 'sex'"
+                      "married_name_change",20,"lname","lname = 'lname', sex = 'sex'",
+                      "duplicates",20,"credit_card",""
                       )
 
 dt_a <- dt_a %>%
