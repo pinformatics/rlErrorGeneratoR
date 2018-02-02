@@ -1,3 +1,13 @@
-error,amount,col_names
-indel,45,"name, job, phone_number"
-repl,50,"name, phone_number"
+error,amount,col_names,arguments
+swap_fields,20,"lname, fname",
+blanks_to_hyphens,20,street_address,all = T
+hyphens_to_blanks,20,city,all = F
+ch1_to_ch2,20,street_address,"all = T, ch1 = ',', ch2 = '|'"
+first_letter_abbreviate,20,state,
+invert_real_and_nicknames,20,fname,
+nick_to_realnames,10,fname,
+real_to_nicknames,10,fname,
+indel,20,lname,
+repl,20,fname,
+transpose,20,"lname, fname",
+married_name_change,20,lname,"lname = 'lname', sex = 'gender_code'"

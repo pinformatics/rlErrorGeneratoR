@@ -43,8 +43,7 @@ married_name_change <- function(df, n_errors, col_names, lname, sex, dob = NULL,
 #give an id_field you would like to use
 duplicates <- function(df, n_errors, col_names){
 
-  n <- seq_len(nrow(df))
-  p <- length(col_names)
+  # stopifnot(length(col_names) == 1)
 
   if(n_errors > nrow(df)){
     warning("Nor enough samples found for generating duplicates")
