@@ -74,5 +74,78 @@ duplicates <- function(df, n_errors, col_names){
 }
 
 
+twins_generate <- function(df, n_errors, sex = NULL, fname = NULL, id_col = NULL){
+
+  if(n_errors > nrow(df)){
+    warning("Nor enough samples found for generating duplicates")
+    n_errors <- nrow(df)
+  }
+
+  fnames_lookup <-
+    tibble(fname = fnames_male, sex = "m") %>%
+      bind_rows(tibble(fname = fnames_female, sex = "f") %>% sample_n(3000)) %>%
+      sample_n(nrow(.)) %>%
+      mutate(fname_len = str_length(fname))
+
+  search_name <- function(name){
+    fnames_lookup %>%
+      filter(fname_len == str_length(name),
+             str_sub(fname, 1, 1) == str_sub(name, 1, 1)) %>%
+      sample_n(1) %>%
+      select(-fname_len)
+  }
+
+  candidate_ids <- sort(sample(df$id, n_errors))
+
+  twins_df <- df[df$id %in% candidate_ids,]
+  twins_df_cp <- twins_df
+  fnames_old <- twins_df[[fname]]
+
+  twins_df_new <- map_df(fnames_old, search_name)
+
+  twins_df[[fname]] <- twins_df_new$fname
+
+  twins_df$id <- str_c("123", twins_df$id, "789") %>% as.integer()
+
+  if(!is.null(sex)){
+    twins_df[[sex]] <- twins_df_new$sex
+  }
+
+  if(!is.null(id_col)){
+    twins_df[[id_col]] <- repl(twins_df[[id_col]])
+  }
+
+  df <- df %>% bind_rows(twins_df) %>% arrange(id)
+
+  df <- update_error_record(df,
+                            candidate_ids,
+                            "fname",
+                            "twins",
+                            twins_df_cp$fname,
+                            twins_df[[fname]])
+  df
+
+
+
+
+  # sex_old <- twins_df[[sex]]
+  # fname_len <- str_length(fnames_old)
+
+
+
+  # fnames_tbl <-
+  #   tibble(fnames_old = twins_df[[fname]]) %>%
+  #   mutate(first_letter = str_sub(fnames_old,1,1),
+  #          fname_len = str_length(fnames_old),
+  #          fnames_old = map_chr(fnames_old, function(fname_old){
+  #            first_letter = str_sub(fname_old, 1, 1)
+  #            fname_len = str_length(fname_old)
+  #
+  #          })
+  #          )
+
+
+}
+
 
 
