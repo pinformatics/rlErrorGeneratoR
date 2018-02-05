@@ -64,6 +64,8 @@ duplicates <- function(df, n_errors, col_names){
 
   df <- bind_rows(dup_df, df) %>% arrange(id)
 
+  attr(df, "error_record") <- error_record
+
   df <- update_error_record(df,
                             candidate_ids,
                             col_names,
@@ -74,7 +76,10 @@ duplicates <- function(df, n_errors, col_names){
 }
 
 
-twins_generate <- function(df, n_errors, sex = NULL, fname = NULL, id_col = NULL){
+twins_generate <- function(df, col_names, fname, n_errors, sex = NULL, id_col = NULL){
+
+  fname <- col_names
+
 
   if(n_errors > nrow(df)){
     warning("Nor enough samples found for generating duplicates")
@@ -115,35 +120,19 @@ twins_generate <- function(df, n_errors, sex = NULL, fname = NULL, id_col = NULL
     twins_df[[id_col]] <- repl(twins_df[[id_col]])
   }
 
+  error_record <- attr(df, "error_record")
+
   df <- df %>% bind_rows(twins_df) %>% arrange(id)
+
+  attr(df, "error_record") <- error_record
 
   df <- update_error_record(df,
                             candidate_ids,
-                            "fname",
+                            fname,
                             "twins",
                             twins_df_cp$fname,
                             twins_df[[fname]])
   df
-
-
-
-
-  # sex_old <- twins_df[[sex]]
-  # fname_len <- str_length(fnames_old)
-
-
-
-  # fnames_tbl <-
-  #   tibble(fnames_old = twins_df[[fname]]) %>%
-  #   mutate(first_letter = str_sub(fnames_old,1,1),
-  #          fname_len = str_length(fnames_old),
-  #          fnames_old = map_chr(fnames_old, function(fname_old){
-  #            first_letter = str_sub(fname_old, 1, 1)
-  #            fname_len = str_length(fname_old)
-  #
-  #          })
-  #          )
-
 
 }
 
