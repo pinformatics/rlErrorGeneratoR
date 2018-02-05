@@ -10,6 +10,7 @@ real_to_nicknames,10,fname,
 indel,20,lname,
 repl,20,fname,
 transpose,20,"lname, fname",
-married_name_change,20,lname,"lname = 'lname', sex = 'gender_code'"
-twins_generate,20,fname,"fname = 'fname', sex = 'gender_code'"
-duplicates,20,voter_registration_number,
+married_name_change,20,,"lname = 'lname', sex = 'gender'"
+twins_generate,20,,"fname = 'fname', sex = 'gender'"
+duplicates,20,,id_col = 'voter_registration_number'
+date_month_swap,20,,date='bday'

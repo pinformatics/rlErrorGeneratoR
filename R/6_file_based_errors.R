@@ -2,7 +2,7 @@
 
 
 
-married_name_change <- function(df, n_errors, col_names, lname, sex, dob = NULL, age = NULL){
+married_name_change <- function(df, n_errors, lname, sex, dob = NULL, age = NULL){
   df_s <- df[df[[sex]] == "f",]
 
   if(!is.null(dob)){
@@ -41,7 +41,7 @@ married_name_change <- function(df, n_errors, col_names, lname, sex, dob = NULL,
 }
 
 #give an id_field you would like to use
-duplicates <- function(df, n_errors, col_names){
+duplicates <- function(df, n_errors, id_col){
 
   # stopifnot(length(col_names) == 1)
 
@@ -53,12 +53,16 @@ duplicates <- function(df, n_errors, col_names){
   candidate_ids <- sample(df$id, n_errors)
 
   dup_df <- df[df$id %in% candidate_ids,]
-  old_vals <- dup_df[[col_names]]
-  new_vals <- sample(df[[col_names]][!df$id %in% candidate_ids], n_errors) %>%
+  old_vals <- dup_df[[id_col]]
+  new_vals <- sample(df[[id_col]][!df$id %in% candidate_ids], n_errors) %>%
     indel() %>%
     repl() %>%
     transpose()
-  dup_df[, col_names] <- new_vals
+  if(all(str_length(str_extract(new_vals, one_or_more(DIGIT))) == str_length(new_vals))){
+    new_vals <- as.integer(new_vals)
+  }
+
+  dup_df[, id_col] <- new_vals
 
   error_record <- attr(df, "error_record")
 
@@ -66,9 +70,10 @@ duplicates <- function(df, n_errors, col_names){
 
   attr(df, "error_record") <- error_record
 
+  # browser()
   df <- update_error_record(df,
                             candidate_ids,
-                            col_names,
+                            id_col,
                             "duplicates",
                             old_vals,
                             new_vals)
@@ -76,9 +81,9 @@ duplicates <- function(df, n_errors, col_names){
 }
 
 
-twins_generate <- function(df, col_names, fname, n_errors, sex = NULL, id_col = NULL){
+twins_generate <- function(df, n_errors, fname, id_col = NULL, sex = NULL){
 
-  fname <- col_names
+  # fname <- col_names
 
 
   if(n_errors > nrow(df)){

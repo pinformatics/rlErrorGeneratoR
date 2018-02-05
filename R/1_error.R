@@ -2,9 +2,9 @@
 
 prep_data <- function(df_original) {
 
+  # mutate_all(as.character()) %>%
   df_original <-
     df_original %>%
-    mutate_all(as.character()) %>%
     mutate(file = "A",
            id = row_number()) %>%
     select(file, id, everything())
@@ -29,7 +29,7 @@ prep_data <- function(df_original) {
 
 update_error_record <- function(df, ids, field, error, before, after){
   error_record <- tibble(id = ids, field = field, error = error,
-                         before = unclass(before), after = unclass(after))
+                         before = as.character(unclass(before)), after = as.character(unclass(after)))
   attr(df, "error_record") <- bind_rows(attr(df, "error_record"),
                                         error_record)
   df
@@ -70,7 +70,10 @@ mess_data.data.frame <- function(df_data, error_lookup){
     arguments$n_errors <- e
 
     #columns the errors apply to
-    arguments$col_names <- str_split(error_lookup[i,] %>% pull(3), ",", simplify = T) %>% str_trim()
+    col_names <- str_split(error_lookup[i,] %>% pull(3), ",", simplify = T) %>% str_trim()
+    if(all(!is.na(col_names))){
+      arguments$col_names <- col_names
+    }
 
     #adding additonal arguments if any
     arguments <- append(arguments, as.list(parse(text=paste0("f(", error_lookup[i,] %>% pull(4) , ")"))[[1]])[-1])

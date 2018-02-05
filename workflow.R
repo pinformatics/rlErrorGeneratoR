@@ -8,14 +8,13 @@ dt_a <-
   ncv %>%
   sample_n(250)
 
-n <- 100
-
 
 (error_table <- read_csv("error_table.csv") %>%
     mutate(arguments = if_else(is.na(arguments), "", arguments)))
 
 (error_result <-
   dt_a %>%
+  gen_birthday_from_age(age = "age") %>%
   prep_data() %>%
   mess_data(error_table))
 

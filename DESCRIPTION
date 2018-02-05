@@ -12,5 +12,6 @@ Imports: charlatan,
     dplyr,
     purrr,
     tidyr,
+    lubridate,
     stringr,
     rebus

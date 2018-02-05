@@ -35,7 +35,7 @@ indel.character <- function(error_strings){
 }
 
 indel.numeric <- function(error_strings){
-  map_chr(error_strings, indel.default, 0:9)
+  map_chr(error_strings, indel.default, 0:9) %>% as.integer()
 }
 
 indel.number <- function(error_strings){
@@ -114,7 +114,7 @@ repl.character <- function(error_strings){
 
 repl.numeric <- function(error_strings){
   # repl(error_strings, 0:9)
-  map_chr(error_strings, repl.default, 0:9)
+  map_chr(error_strings, repl.default, 0:9)%>% as.integer()
 }
 
 repl.number <- function(error_strings){
