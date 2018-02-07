@@ -29,7 +29,7 @@ prep_data <- function(df_original) {
 
 update_error_record <- function(df, ids, field, error, before, after){
   error_record <- tibble(id = ids, field = field, error = error,
-                         before = as.character(unclass(before)), after = as.character(unclass(after)))
+                         before = as.character(before), after = as.character(after))
   attr(df, "error_record") <- bind_rows(attr(df, "error_record"),
                                         error_record)
   df
@@ -59,6 +59,8 @@ mess_data.data.frame <- function(df_data, error_lookup){
 
     error_function <- error_lookup[i,] %>% pull(1)
 
+    message(error_function)
+
     #setting the srguments to be passed to do.call one by one
 
     #firstly, we pass the df as it causes the s3 dispatch
@@ -77,6 +79,7 @@ mess_data.data.frame <- function(df_data, error_lookup){
 
     #adding additonal arguments if any
     arguments <- append(arguments, as.list(parse(text=paste0("f(", error_lookup[i,] %>% pull(4) , ")"))[[1]])[-1])
+    # if(error_function == "date_transpose") browser()
 
     df_data <- do.call(error_function, args = arguments)
 

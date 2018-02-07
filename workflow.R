@@ -8,7 +8,7 @@ dt_a <-
   ncv %>%
   sample_n(250)
 
-
+#duplicates should be last
 (error_table <- read_csv("error_table.csv") %>%
     mutate(arguments = if_else(is.na(arguments), "", arguments)))
 

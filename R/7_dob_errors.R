@@ -25,9 +25,11 @@ gen_birthday_from_age <- function(df, age, as_of_year_end = "most_recent_year_en
 }
 
 
-date_month_swap <- function(df, n_errors, date){
+date_swap <- function(df, n_errors, date){
+  # browser()
+  days <- day(df[[date]])
 
-  potential_candidates <- df[day(df[[date]]) < 13,]
+  potential_candidates <- df[days < 13,]
 
   potential_candidates <-
     potential_candidates %>%
@@ -46,7 +48,7 @@ date_month_swap <- function(df, n_errors, date){
   month(new_values) <- day(old_values)
   df[df$id %in% candidate_ids,date] <- new_values
 
-  error_record <- attr(df, "error_record")
+  # error_record <- attr(df, "error_record")
 
 
   df <- update_error_record(df,
@@ -57,4 +59,50 @@ date_month_swap <- function(df, n_errors, date){
                             new_values)
   df
 
+}
+
+
+date_transpose <- function(df, n_errors, date, token = "year") {
+  if(token == "year"){
+    all_dates <- df[[date]]
+    last_two_digits_different <- df$id[str_sub(all_dates, 3,3) != str_sub(all_dates, 4,4)]
+    duplicate_ids <- attr(df, "error_record") %>% filter(error == "duplicates") %>% pull(id)
+
+    candidate_ids <- sort(sample(setdiff(last_two_digits_different,duplicate_ids), n_errors))
+    old_values <- df[df$id %in% candidate_ids,][[date]]
+    new_values <- old_values
+    old_values_yr <- year(old_values)
+    year(new_values) <- str_sub(old_values_yr, 1, 2) %>% str_c(old_values_yr %>% str_sub(3, 4) %>% transpose()) %>% as.integer()
+    df[df$id %in% candidate_ids,date] <- new_values
+    df <- update_error_record(df,
+                              candidate_ids,
+                              date,
+                              "date_transpose",
+                              old_values,
+                              new_values)
+    df
+  } else if(token == "month"){
+    ids <- df$id
+    old_dates <- df[[date]]
+    new_dates <- ymd(str_c(year(old_dates), transpose(month(old_dates)), day(old_dates)))
+    candidate_ids <- ids[!is.na(new_dates)] %>% sample(n_errors)
+
+    df[id %in% candidate_ids, date] <- ymd(str_c(year(df[id %in% candidate_ids, date]),
+                                                 transpose(month(df[id %in% candidate_ids, date])),
+                                                 day(df[id %in% candidate_ids, date])))
+
+    df
+
+  } else {
+    ids <- df$id
+    old_dates <- df[[date]]
+    new_dates <- ymd(str_c(year(old_dates), month(old_dates), transpose(day(old_dates))))
+    candidate_ids <- ids[!is.na(new_dates)] %>% sample(n_errors)
+
+    df[id %in% candidate_ids, date] <- ymd(str_c(year(df[id %in% candidate_ids, date]),
+                                                 month(df[id %in% candidate_ids, date]),
+                                                 transpose(day(df[id %in% candidate_ids, date]))))
+
+    df
+  }
 }

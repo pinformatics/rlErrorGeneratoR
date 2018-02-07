@@ -12,5 +12,6 @@ repl,20,fname,
 transpose,20,"lname, fname",
 married_name_change,20,,"lname = 'lname', sex = 'gender'"
 twins_generate,20,,"fname = 'fname', sex = 'gender'"
+date_swap,20,,date='bday'
+date_transpose,20,,date='bday'
 duplicates,20,,id_col = 'voter_registration_number'
-date_month_swap,20,,date='bday'

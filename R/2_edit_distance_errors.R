@@ -180,7 +180,9 @@ transpose.default <- function(error_strings){
 transpose.base <- function(edit_string){
   stopifnot(edit_string %>% str_length() > 1)
 
-  transpose_index <- sample(2:str_length(edit_string), 1)
+  range <- 2:str_length(edit_string)
+  transpose_index <- sample(range, 1)
+  if(length(range) == 1) transpose_index <- range
   transpose_index_l <- transpose_index - 1
 
   edit_string <- edit_string %>%

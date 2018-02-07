@@ -143,3 +143,10 @@ twins_generate <- function(df, n_errors, fname, id_col = NULL, sex = NULL){
 
 
 
+
+twins_identify <- function(){
+
+}
+
+
+
