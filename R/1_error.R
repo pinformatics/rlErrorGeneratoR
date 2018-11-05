@@ -78,7 +78,10 @@ mess_data.data.frame <- function(df_data, error_lookup){
     }
 
     #adding additonal arguments if any
-    arguments <- append(arguments, as.list(parse(text=paste0("f(", error_lookup[i,] %>% pull(4) , ")"))[[1]])[-1])
+    if(!is.na(error_lookup[i,] %>% pull(4))){
+      arguments <- append(arguments, as.list(parse(text=paste0("f(", error_lookup[i,] %>% pull(4) , ")"))[[1]])[-1])
+    }
+
     # if(error_function == "date_transpose") browser()
 
     df_data <- do.call(error_function, args = arguments)

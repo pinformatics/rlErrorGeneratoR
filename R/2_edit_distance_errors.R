@@ -140,69 +140,71 @@ repl.default <- function(edit_string, error_chars = letters){
     str_c(collapse = "")
 }
 
-transpose <- function(x, ...) {
-  UseMethod("transpose")
+tpose <- function(x, ...) {
+  UseMethod("tpose")
 }
 
-transpose.data.frame <- function(df, n_errors, col_names){
+tpose.data.frame <- function(df, n_errors, col_names){
   n <- seq_len(nrow(df))
   p <- length(col_names)
   errors_col <- floor(n_errors/p)
 
   if((n_errors < nrow(df)*p) && (errors_col > 0)){
     for(i in seq_len(p)) {
-      rows <- sample(n, floor(n_errors/p))
+      strlen_2 <- str_length(df[[col_names[i]]]) > 2
+      ids <- df$id[strlen_2]
+      rows <- sample(ids, floor(n_errors/p))
       col_name <- col_names[i]
-      before <- df %>% filter(row_number() %in% rows) %>% pull(col_name)
-      after <- before %>% transpose()
+      before <- df %>% filter(id %in% rows) %>% pull(col_name)
+      after <- before %>% tpose()
       df[rows, col_name] <- after
-      df <- update_error_record(df, df$id[rows], col_name, "transpose", before, after)
+      df <- update_error_record(df, df$id[rows], col_name, "tpose", before, after)
     }
   } else {
     for(i in seq_len(n_errors)){
       rows <- sample(n, 1)
       col_name <- sample(col_names, 1)
       before <- df %>% filter(row_number() %in% rows) %>% pull(col_name)
-      after <- before %>% transpose()
+      after <- before %>% tpose()
       df[rows, col_name] <- after
-      df <- update_error_record(df, df$id[rows], col_name, "transpose", before, after)
+      df <- update_error_record(df, df$id[rows], col_name, "tpose", before, after)
     }
   }
 
   df
 }
 
-transpose.default <- function(error_strings){
-  # transpose(error_strings, letters)
-  map_chr(error_strings, transpose.base)
+tpose.default <- function(error_strings){
+  # tpose(error_strings, letters)
+  map_chr(error_strings, tpose.base)
 }
 
-transpose.base <- function(edit_string){
+tpose.base <- function(edit_string){
   stopifnot(edit_string %>% str_length() > 1)
 
   range <- 2:str_length(edit_string)
-  transpose_index <- sample(range, 1)
-  if(length(range) == 1) transpose_index <- range
-  transpose_index_l <- transpose_index - 1
+  tpose_index <- sample(range, 1)
+  if(length(range) == 1) tpose_index <- range
+  tpose_index_l <- tpose_index - 1
 
   edit_string <- edit_string %>%
     str_split("") %>%
     .[[1]]
 
   if(edit_string %>% unique() %>% length() > 1){
-    while(edit_string[transpose_index] == edit_string[transpose_index_l]){
-      transpose_index <- sample(2:length(edit_string), 1)
-      transpose_index_l <- transpose_index - 1
+    while(edit_string[tpose_index] == edit_string[tpose_index_l]){
+      tpose_index <- sample(2:length(edit_string), 1)
+      tpose_index_l <- tpose_index - 1
     }
   } else{
-    warning("All charcters are the same. Transpose is not valid!")
+    warning("All charcters are the same. tpose is not valid!")
   }
 
-  transpose_char <- edit_string[transpose_index]
-  transpose_char_l <- edit_string[transpose_index_l]
+  tpose_char <- edit_string[tpose_index]
+  tpose_char_l <- edit_string[tpose_index_l]
 
-  edit_string[transpose_index] <- transpose_char_l
-  edit_string[transpose_index_l] <- transpose_char
+  edit_string[tpose_index] <- tpose_char_l
+  edit_string[tpose_index_l] <- tpose_char
 
   edit_string %>%
     str_c(collapse = "")

@@ -9,9 +9,5 @@ Encoding: UTF-8
 LazyData: true
 Imports: charlatan,
     stringdist,
-    dplyr,
-    purrr,
-    tidyr,
-    lubridate,
-    stringr,
+    tidyverse,
     rebus

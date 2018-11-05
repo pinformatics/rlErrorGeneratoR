@@ -23,3 +23,18 @@ View(error_record)
 error_record %>%
   count(error, sort = T)
 
+error_result %>%
+  pluck(1) %>%
+  semi_join(
+    error_record %>%
+      filter(error == "twins_generate")
+  )
+
+
+error_result %>%
+  pluck(2) %>%
+  semi_join(
+    error_record %>%
+              filter(error == "twins_generate")
+  )
+

@@ -9,7 +9,7 @@ nick_to_realnames,10,fname,
 real_to_nicknames,10,fname,
 indel,20,lname,
 repl,20,fname,
-transpose,20,"lname, fname",
+tpose,20,"lname, fname",
 married_name_change,20,,"lname = 'lname', sex = 'gender'"
 twins_generate,20,,"fname = 'fname', sex = 'gender'"
 date_swap,20,,date='bday'
