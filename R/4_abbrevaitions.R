@@ -17,7 +17,7 @@ first_letter_abbreviate <- function(df, n_errors, col_names){
       rows <- sample(n, 1)
       col_name <- sample(col_names, 1)
       before <- df%>% filter(row_number() %in% rows) %>% pull(col_name)
-      after <- before %>% str_sub(1,1)()
+      after <- before %>% str_sub(1,1)
       df[rows, col_name] <-  after
       df <- update_error_record(df, df$id[rows], col_name, "first_letter_abbreviate", before, after)
     }

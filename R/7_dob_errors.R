@@ -27,53 +27,82 @@ gen_birthday_from_age <- function(df, age, as_of_year_end = "most_recent_year_en
 
 date_swap <- function(df, n_errors, date){
   # browser()
-  days <- day(df[[date]])
+  if (nrow(df) == 1){
+    days <- day(df[[date]])
+    if(!is.na(days) && days > 12){
+      warning("Not enough candidate dates found")
+    } else{
+      candidate_ids <- df$id
+      old_values <- df[[date]]
+      new_values <- old_values
+      day(new_values) <- month(old_values)
+      month(new_values) <- day(old_values)
+      df[[date]] <- new_values
 
-  potential_candidates <- df[days < 13,]
+      df <- update_error_record(df,
+                                candidate_ids,
+                                date,
+                                "date_month_swap",
+                                old_values,
+                                new_values)
+    }
+  } else {
+    days <- day(df[[date]])
 
-  potential_candidates <-
-    potential_candidates %>%
-    anti_join(attr(df, "error_record") %>% filter(error == "duplicates"), by = "id")
+    potential_candidates <- df[days < 13,]
 
-  if(n_errors > nrow(potential_candidates)){
-    warning("Not enough candidate dates found")
-    n_errors <- nrow(potential_candidates)
+    potential_candidates <-
+      potential_candidates %>%
+      anti_join(attr(df, "error_record") %>% filter(error == "duplicates"), by = "id")
+
+    if(n_errors > nrow(potential_candidates)){
+      warning("Not enough candidate dates found")
+      n_errors <- nrow(potential_candidates)
+    }
+
+    candidate_ids <- sample(potential_candidates$id, n_errors)
+
+    old_values <- df[df$id %in% candidate_ids,][[date]]
+    new_values <- old_values
+    day(new_values) <- month(old_values)
+    month(new_values) <- day(old_values)
+    df[df$id %in% candidate_ids,date] <- new_values
+
+    # error_record <- attr(df, "error_record")
+
+    df <- update_error_record(df,
+                              candidate_ids,
+                              date,
+                              "date_month_swap",
+                              old_values,
+                              new_values)
   }
-
-  candidate_ids <- sample(potential_candidates$id, n_errors)
-
-  old_values <- df[df$id %in% candidate_ids,][[date]]
-  new_values <- old_values
-  day(new_values) <- month(old_values)
-  month(new_values) <- day(old_values)
-  df[df$id %in% candidate_ids,date] <- new_values
-
-  # error_record <- attr(df, "error_record")
-
-
-  df <- update_error_record(df,
-                            candidate_ids,
-                            date,
-                            "date_month_swap",
-                            old_values,
-                            new_values)
   df
-
 }
 
 
 date_transpose <- function(df, n_errors, date, token = "year") {
   if(token == "year"){
-    all_dates <- df[[date]]
-    last_two_digits_different <- df$id[str_sub(all_dates, 3,3) != str_sub(all_dates, 4,4)]
-    duplicate_ids <- attr(df, "error_record") %>% filter(error == "duplicates") %>% pull(id)
+    if (nrow(df) == 1){
+      old_values <- df[[date]]
+      new_values <- old_values
+      old_values_yr <- year(old_values)
+      year(new_values) <- str_sub(old_values_yr, 1, 2) %>% str_c(old_values_yr %>% str_sub(4)) %>% str_c(old_values_yr %>% str_sub(3,3)) %>% as.integer()
+      df[[date]] <- new_values
+      candidate_ids <- df$id
+    } else {
+      all_dates <- df[[date]]
+      last_two_digits_different <- df$id[str_sub(all_dates, 3,3) != str_sub(all_dates, 4,4)]
+      duplicate_ids <- attr(df, "error_record") %>% filter(error == "duplicates") %>% pull(id)
 
-    candidate_ids <- sort(sample(setdiff(last_two_digits_different,duplicate_ids), n_errors))
-    old_values <- df[df$id %in% candidate_ids,][[date]]
-    new_values <- old_values
-    old_values_yr <- year(old_values)
-    year(new_values) <- str_sub(old_values_yr, 1, 2) %>% str_c(old_values_yr %>% str_sub(3, 4) %>% transpose()) %>% as.integer()
-    df[df$id %in% candidate_ids,date] <- new_values
+      candidate_ids <- sort(sample(setdiff(last_two_digits_different,duplicate_ids), n_errors))
+      old_values <- df[df$id %in% candidate_ids,][[date]]
+      new_values <- old_values
+      old_values_yr <- year(old_values)
+      ###year(new_values) <- str_sub(old_values_yr, 1, 2) %>% str_c(old_values_yr %>% str_sub(3, 4) %>% transpose()) %>% as.integer()
+      year(new_values) <- str_sub(old_values_yr, 1, 2) %>% str_c(old_values_yr %>% str_sub(4)) %>% str_c(old_values_yr %>% str_sub(3,3)) %>% as.integer()
+      df[df$id %in% candidate_ids,date] <- new_values
+    }
     df <- update_error_record(df,
                               candidate_ids,
                               date,

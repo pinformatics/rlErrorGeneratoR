@@ -29,11 +29,11 @@ married_name_change <- function(df, n_errors, lname, sex, dob = NULL, age = NULL
 
   error_record <- attr(df, "error_record")
   df <- update_error_record(df,
-                              candidate_ids,
-                              lname,
-                              "married_name_change",
-                              old_lnames,
-                              new_names)
+                            candidate_ids,
+                            lname,
+                            "married_name_change",
+                            old_lnames,
+                            new_names)
 
 
 
@@ -50,14 +50,26 @@ duplicates <- function(df, n_errors, id_col){
     n_errors <- nrow(df)
   }
 
-  candidate_ids <- sample(df$id, n_errors)
+  if (nrow(df) == 1){
+    candidate_ids <- df$id
+    dup_df <- df
+    old_vals <- dup_df[[id_col]]
+    new_vals <- list(df[[id_col]] %>%
+        indel() %>%
+        repl()) %>%
+      transpose()
+  } else{
+    candidate_ids <- sample(df$id, n_errors)
+    dup_df <- df[df$id %in% candidate_ids,]
+    old_vals <- dup_df[[id_col]]
+    new_vals <- list(
+      sample(df[[id_col]][!df$id %in% candidate_ids], n_errors) %>%
+        indel() %>%
+        repl()) %>%
+      transpose()
+  }
 
-  dup_df <- df[df$id %in% candidate_ids,]
-  old_vals <- dup_df[[id_col]]
-  new_vals <- sample(df[[id_col]][!df$id %in% candidate_ids], n_errors) %>%
-    indel() %>%
-    repl() %>%
-    transpose()
+  new_vals <- unlist(new_vals)
   if(all(str_length(str_extract(new_vals, one_or_more(DIGIT))) == str_length(new_vals))){
     new_vals <- as.integer(new_vals)
   }
@@ -85,7 +97,6 @@ twins_generate <- function(df, n_errors, fname, id_col = NULL, sex = NULL){
 
   # fname <- col_names
 
-
   if(n_errors > nrow(df)){
     warning("Nor enough samples found for generating duplicates")
     n_errors <- nrow(df)
@@ -93,9 +104,9 @@ twins_generate <- function(df, n_errors, fname, id_col = NULL, sex = NULL){
 
   fnames_lookup <-
     tibble(fname = fnames_male, sex = "m") %>%
-      bind_rows(tibble(fname = fnames_female, sex = "f") %>% sample_n(3000)) %>%
-      sample_n(nrow(.)) %>%
-      mutate(fname_len = str_length(fname))
+    bind_rows(tibble(fname = fnames_female, sex = "f") %>% sample_n(3000)) %>%
+    sample_n(nrow(.)) %>%
+    mutate(fname_len = str_length(fname))
 
   search_name <- function(name){
     fnames_lookup %>%
@@ -105,9 +116,14 @@ twins_generate <- function(df, n_errors, fname, id_col = NULL, sex = NULL){
       select(-fname_len)
   }
 
-  candidate_ids <- sort(sample(df$id, n_errors))
+  if (nrow(df) == 1){
+    candidate_ids <- df$id
+    twins_df <- df[df$id %in% candidate_ids,]
+  } else{
+    candidate_ids <- sort(sample(df$id, n_errors))
+    twins_df <- df[df$id %in% candidate_ids,]
+  }
 
-  twins_df <- df[df$id %in% candidate_ids,]
   twins_df_cp <- twins_df
   fnames_old <- twins_df[[fname]]
 

@@ -1,5 +1,5 @@
 
-
+### create original(file = a) and secondry(copy of original but file = b) from data
 prep_data <- function(df_original) {
 
   # mutate_all(as.character()) %>%
@@ -55,13 +55,13 @@ mess_data.data.frame <- function(df_data, error_lookup){
                                            ~after)
 
   for(i in seq_len(nrow(error_lookup))){
-
+  ###for(i in 1:15){
 
     error_function <- error_lookup[i,] %>% pull(1)
 
     message(error_function)
 
-    #setting the srguments to be passed to do.call one by one
+    #setting the arguments to be passed to do.call one by one
 
     #firstly, we pass the df as it causes the s3 dispatch
     arguments <- list(df = df_data)
