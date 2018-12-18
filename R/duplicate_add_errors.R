@@ -21,12 +21,12 @@ prepare_data <- function(df) {
 
 }
 
-dup_data <- function(df_original, n_dup, no_errs) {
+perturb_data <- function(df_original, n_perturb, no_errs) {
   df_original <-
     df_original %>%
     mutate_if(is.character, str_to_lower)
 
-  df_secondary <- df_original %>% mutate(file = 1)
+  df_secondary <- df_original
   for (i in 2:n_dup){
     dup <- df_original %>% mutate(file = i) %>% mutate(id = id + max(df_secondary$id))
     df_secondary <- rbind(df_secondary, dup)
@@ -104,7 +104,7 @@ make_twins <- function(df){
                                       ~error,
                                       ~before,
                                       ~after)
-  twins <- df[duplicated(df[8:9]),]
+  twins <- df[duplicated(df[c(5,8,9)]),]  # same lname, birth year, and street address
   n <- floor(nrow(twins) / 2) # make 50% of this data Twins
   twins <- sample_n(twins, n)
 

@@ -21,21 +21,24 @@ df <- df %>%
 natural_dup <- df[duplicated(df[2:6]),]
 df <- df[!duplicated(df[2:6]),]
 
-####### add twins #######
+####### make twins #######
 
 df_t <- df %>%
   prepare_data() %>%
   make_twins()
 error_record <- attr(df_t, "error_record")
 
+###### add error ######
+
 error_table <- read_csv("error_table.csv")
-n_record <- 200
-n_dup <- 2
+n_perturb <- 200
+n_err_record <- 2
+n_err_field <- 1
 
 df_a <- sample_n(df_t, n_record)
 
-dup_result <- df_a %>%
-  dup_data(n_dup = n_dup, no_errs = nrow(error_table))
+df_perturb <- df_a %>%
+  perturb_data(n_perturb = n_perturb, n_errs = nrow(error_table))
 
 error_result <- dup_result$df_secondary %>%
   add_error(error_table = error_table, error_record = error_record)
