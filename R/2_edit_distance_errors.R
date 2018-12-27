@@ -83,15 +83,27 @@ repl.data.frame <- function(df, n_errors, col_names){
   n <- seq_len(nrow(df))
   p <- length(col_names)
   errors_col <- floor(n_errors/p)
+  # browser()
+  ids <- df$id
 
   if((n_errors < nrow(df)*p) && (errors_col > 0)){
     for(i in seq_len(p)) {
-      rows <- sample(n, floor(n_errors/p))
+      # rows <- sample(n, floor(n_errors/p))
       col_name <- col_names[i]
-      before <- df %>% filter(row_number() %in% rows) %>% pull(col_name)
+      col_vals <- df[[col_name]]
+      candidate_ids <-
+        ids[str_length(col_vals) > 0] %>%
+        sample(floor(n_errors/p))
+      before <- df[ids %in% candidate_ids,][[col_name]]
+      # browser()
       after <- before %>% repl()
-      df[rows, col_name] <- after
-      df <- update_error_record(df, df$id[rows], col_name, "repl", before, after)
+      df[ids %in% candidate_ids, col_name] <- after
+      df <- update_error_record(df,
+                                df[ids %in% candidate_ids,][["id"]],
+                                col_name,
+                                "repl",
+                                before,
+                                after)
     }
   } else {
     for(i in seq_len(n_errors)){
@@ -122,6 +134,11 @@ repl.number <- function(error_strings){
   structure(map_chr(error_strings, repl.default, 0:9), class="number")
 }
 
+repl.Date <- function(error_strings){
+  # repl(error_strings, 0:9)
+  err_date(error_strings)
+}
+
 
 repl.default <- function(edit_string, error_chars = letters){
   repl_index <- sample(1:str_length(edit_string), 1)
@@ -140,6 +157,17 @@ repl.default <- function(edit_string, error_chars = letters){
     str_c(collapse = "")
 }
 
+tpose_eligible <- function(items){
+  mat <- str_split(items, "", simplify = T)
+  unique_letters <-
+    map_int(1:nrow(mat), function(x){
+      letters <- mat[x, ]
+      letters[letters != ""] %>% unique() %>% length()
+    })
+  unique_letters > 1
+}
+
+
 tpose <- function(x, ...) {
   UseMethod("tpose")
 }
@@ -151,14 +179,24 @@ tpose.data.frame <- function(df, n_errors, col_names){
 
   if((n_errors < nrow(df)*p) && (errors_col > 0)){
     for(i in seq_len(p)) {
-      strlen_2 <- str_length(df[[col_names[i]]]) > 2
-      ids <- df$id[strlen_2]
-      rows <- sample(ids, floor(n_errors/p))
       col_name <- col_names[i]
-      before <- df %>% filter(id %in% rows) %>% pull(col_name)
+      col_vals <- df[[col_name]]
+      # strlen_2 <- str_length(col_vals) >= 2
+      is_tpose_eligible <- tpose_eligible(col_vals)
+      ids <- df$id
+      candidate_ids <- sample(ids[is_tpose_eligible], floor(n_errors/p))
+      # rows <- sample(ids
+      before <- df %>%
+        filter(id %in% candidate_ids) %>%
+        pull(col_name)
       after <- before %>% tpose()
-      df[rows, col_name] <- after
-      df <- update_error_record(df, df$id[rows], col_name, "tpose", before, after)
+      df[ids %in% candidate_ids, col_name] <- after
+      df <- update_error_record(df,
+                                df[ids %in% candidate_ids, ][["id"]],
+                                col_name,
+                                "tpose",
+                                before,
+                                after)
     }
   } else {
     for(i in seq_len(n_errors)){

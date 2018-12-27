@@ -86,14 +86,22 @@ mess_data.data.frame <- function(df_data, error_lookup){
 
     df_data <- do.call(error_function, args = arguments)
 
+    # print(attr(df_data, "error_record"))
+
   }
 
   df_data
 }
 
 mess_data.df_pairs <- function(df_pairs, error_lookup){
-  df_pairs$df_secondary <- mess_data(df_pairs$df_secondary, error_lookup)
-  df_pairs
+  # browser()
+  df_pairs$df_secondary <- mess_data(df_pairs$df_secondary,
+                                     error_lookup %>% filter(error != "add_duplicates"))
+  e <- error_lookup %>% filter(error == "add_duplicates") %>% pull(amount)
+  if(e < 1) e <- ceiling(e*nrow(df_pairs$df_original))
+  df_pairs %>%
+    add_duplicates(e)
+  # df_pairs
 }
 
 

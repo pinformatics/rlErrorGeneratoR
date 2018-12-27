@@ -27,15 +27,66 @@ names_lookup %>%
   select(!!x)
 
 
+# devtools::load_all(".")
+# pacman::p_load(tidyverse, lubridate)
+# x <-
+#   nycflights13::flights %>%
+#   mutate(dob = ymd(glue::glue("{year}-{month}-{day}"))) %>%
+#   sample_n(25) %>%
+#   pull(dob)
+#
+# err_date.default(x)
+
+
+df_flights <-
+  nycflights13::flights %>%
+  mutate(dob = ymd(glue::glue("{year}-{month}-{day}"))) %>%
+  sample_n(25) %>%
+  select(dob)
+
+
+# df_flights %>%
+#   mutate(fname = sample(letters, nrow(.), replace = T),
+#          lname = sample(letters, nrow(.), replace = T),
+#          gender_code = sample(c("m", "f"), nrow(.), replace = T)) %>%
+df_a <-
+  read_rds("data/apr13_mod_rds.rds") %>%
+  filter(!is.na(dob))
+
+df_error_table <-
+  read_csv("exta/error_table2.csv") %>%
+  mutate(amount = amount * 0.1)
+
+df_messed <-
+  df_a %>%
+  prep_data() %>%
+  mess_data(df_error_table)
+
+df_secondary <-
+  df_messed %>%
+  pluck("df_secondary")
+
+df_errors <-
+  df_secondary %>%
+  attributes() %>%
+  pluck("error_record") %>%
+  print(n = 50)
+
+df_errors %>%
+  count(error, field) %>%
+  mutate(p = n/sum(n))
+
+length(unique(df_errors$id))/nrow(df_secondary)
 
 
 
 
-
-
-
-
-
+x <- read_csv("exta/apr13.csv")
+x %>%
+  filter(!is.na(name_sufx_cd)) %>%
+  count(name_sufx_cd, sort = T) %>%
+  mutate(p = n/sum(n)) %>%
+  pull(name_sufx_cd)
 
 
 ncv <-

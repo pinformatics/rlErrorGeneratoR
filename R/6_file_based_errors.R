@@ -1,24 +1,20 @@
-
-
-
-
 married_name_change <- function(df, n_errors, lname, sex, dob = NULL, age = NULL){
   df_s <- df[df[[sex]] == "f",]
 
   if(!is.null(dob)){
-    #fill in code
+    # interval(start = dob, end = givendate) /
+    #   duration(num = 1, units = "years")
   } else if(!is.null(age)){
     #filter age
     df_s <- df_s[df_s[[age]] > 20,]
   }
 
   if (n_errors > nrow(df_s)){
-
     warning("Not enough samples found for simulating married last name change.")
     n_errors <- nrow(df_s)
   }
-
-  candidate_ids <- sort(sample(df_s$id, n_errors))
+  # browser()
+  candidate_ids <- sample(df_s$id, n_errors)
 
   old_lnames <- df[[lname]][df$id %in% candidate_ids]
   new_names <- lnames_all %>%
@@ -27,9 +23,9 @@ married_name_change <- function(df, n_errors, lname, sex, dob = NULL, age = NULL
   df[df$id %in% candidate_ids, lname] <- new_names
 
 
-  error_record <- attr(df, "error_record")
+  # error_record <- attr(df, "error_record")
   df <- update_error_record(df,
-                            candidate_ids,
+                            df[df$id %in% candidate_ids, ][["id"]],
                             lname,
                             "married_name_change",
                             old_lnames,
@@ -40,57 +36,94 @@ married_name_change <- function(df, n_errors, lname, sex, dob = NULL, age = NULL
   df
 }
 
-#give an id_field you would like to use
-duplicates <- function(df, n_errors, id_col){
+add_duplicates <- function(df_pairs, n_errors){
 
-  # stopifnot(length(col_names) == 1)
+  df_original <- df_pairs$df_original
+  df_secondary <- df_pairs$df_secondary
 
-  if(n_errors > nrow(df)){
-    warning("Nor enough samples found for generating duplicates")
-    n_errors <- nrow(df)
-  }
+  ids <-
+    attributes(df_secondary) %>%
+    pluck("error_record") %>%
+    sample_n(nrow(.)) %>%
+    pull(id) %>%
+    unique()
 
-  if (nrow(df) == 1){
-    candidate_ids <- df$id
-    dup_df <- df
-    old_vals <- dup_df[[id_col]]
-    new_vals <- list(df[[id_col]] %>%
-        indel() %>%
-        repl()) %>%
-      transpose()
-  } else{
-    candidate_ids <- sample(df$id, n_errors)
-    dup_df <- df[df$id %in% candidate_ids,]
-    old_vals <- dup_df[[id_col]]
-    new_vals <- list(
-      sample(df[[id_col]][!df$id %in% candidate_ids], n_errors) %>%
-        indel() %>%
-        repl()) %>%
-      transpose()
-  }
+  ids <- sample(ids, n_errors)
 
-  new_vals <- unlist(new_vals)
-  if(all(str_length(str_extract(new_vals, one_or_more(DIGIT))) == str_length(new_vals))){
-    new_vals <- as.integer(new_vals)
-  }
-
-  dup_df[, id_col] <- new_vals
-
-  error_record <- attr(df, "error_record")
-
-  df <- bind_rows(dup_df, df) %>% arrange(id)
-
-  attr(df, "error_record") <- error_record
-
+  df_secondary_new <-
+    df_original %>%
+    filter(id %in% ids) %>%
+    bind_rows(df_secondary)
   # browser()
-  df <- update_error_record(df,
-                            candidate_ids,
-                            id_col,
-                            "duplicates",
-                            old_vals,
-                            new_vals)
-  df
+  attr(df_secondary_new, "error_record") <-
+    attr(df_secondary, "error_record")
+
+  df_secondary_new <-
+    update_error_record(df_secondary_new,
+                        ids,
+                        "all_fields",
+                        "duplicate",
+                        "original",
+                        "original")
+
+  df_pairs$df_secondary <- df_secondary_new
+  attr(df_pairs$df_secondary, "error_record") <-
+    attr(df_secondary_new, "error_record")
+
+  df_pairs
 }
+
+#give an id_field you would like to use
+# duplicates <- function(df, n_errors, id_col){
+#
+#   # stopifnot(length(col_names) == 1)
+#
+#   if(n_errors > nrow(df)){
+#     warning("Nor enough samples found for generating duplicates")
+#     n_errors <- nrow(df)
+#   }
+#
+#   if (nrow(df) == 1){
+#     candidate_ids <- df$id
+#     dup_df <- df
+#     old_vals <- dup_df[[id_col]]
+#     new_vals <- list(df[[id_col]] %>%
+#         indel() %>%
+#         repl()) %>%
+#       transpose()
+#   } else{
+#     candidate_ids <- sample(df$id, n_errors)
+#     dup_df <- df[df$id %in% candidate_ids,]
+#     old_vals <- dup_df[[id_col]]
+#     new_vals <- list(
+#       sample(df[[id_col]][!df$id %in% candidate_ids], n_errors) %>%
+#         indel() %>%
+#         repl()) %>%
+#       transpose()
+#   }
+#
+#   new_vals <- unlist(new_vals)
+#   if(all(str_length(str_extract(new_vals, one_or_more(DIGIT))) == str_length(new_vals))){
+#     new_vals <- as.integer(new_vals)
+#   }
+#
+#   dup_df[, id_col] <- new_vals
+#
+#   error_record <- attr(df, "error_record")
+#
+#   df <- bind_rows(dup_df, df) %>% arrange(id)
+#
+#   attr(df, "error_record") <- error_record
+#
+#   # browser()
+#   df <- update_error_record(df,
+#                             candidate_ids,
+#                             id_col,
+#                             "duplicates",
+#                             old_vals,
+#                             new_vals)
+#   df
+# }
 
 
 twins_generate <- function(df, n_errors, fname, id_col = NULL, sex = NULL){
