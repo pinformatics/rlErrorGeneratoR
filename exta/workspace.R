@@ -49,6 +49,8 @@ df_flights <-
 #   mutate(fname = sample(letters, nrow(.), replace = T),
 #          lname = sample(letters, nrow(.), replace = T),
 #          gender_code = sample(c("m", "f"), nrow(.), replace = T)) %>%
+library(tidyverse)
+
 df_a <-
   read_rds("data/apr13_mod_rds.rds") %>%
   filter(!is.na(dob))

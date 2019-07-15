@@ -16,3 +16,6 @@ date_transpose,.03,,"date = 'dob', token = 'day'"
 date_replace, .03,,"date = 'dob', token = 'year'"
 date_transpose,.03,,"date = 'dob', token = 'year'"
 add_duplicates,.05,,
+make_missing, 0.017, fname,
+make_missing, 0.017, lname,
+make_missing, 0.017, dob,

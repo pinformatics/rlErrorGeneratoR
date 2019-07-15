@@ -7,23 +7,40 @@ indel.data.frame <- function(df, n_errors, col_names){
   p <- length(col_names)
   errors_col <- floor(n_errors/p)
 
-  if((n_errors < nrow(df)*p) && (errors_col > 0)) {
+  ids <- df$id
+
+  if((n_errors < nrow(df)*p) && (errors_col > 0)){
     for(i in seq_len(p)) {
-      rows <- sample(n, errors_col)
+      # rows <- sample(n, floor(n_errors/p))
       col_name <- col_names[i]
-      before <- df %>% filter(row_number() %in% rows) %>% pull(col_name)
+      col_vals <- df[[col_name]]
+      candidate_ids <-
+        ids[str_length(col_vals) > 0] %>%
+        sample(floor(n_errors/p))
+      before <- df[ids %in% candidate_ids,][[col_name]]
+      # browser()
       after <- before %>% indel()
-      df[rows, col_name] <-  after
-      df <- update_error_record(df, df$id[rows], col_name, "indel", before, after)
+      df[ids %in% candidate_ids, col_name] <- after
+      df <- update_error_record(df,
+                                df[ids %in% candidate_ids,][["id"]],
+                                col_name,
+                                "indel",
+                                before,
+                                after)
     }
   } else {
     for(i in seq_len(n_errors)){
       rows <- sample(n, 1)
       col_name <- sample(col_names, 1)
-      before <- df%>% filter(row_number() %in% rows) %>% pull(col_name)
+      before <- df[ids %in% candidate_ids,][[col_name]]
       after <- before %>% indel()
       df[rows, col_name] <-  after
-      df <- update_error_record(df, df$id[rows], col_name, "indel", before, after)
+      df <- update_error_record(df,
+                                df[ids %in% candidate_ids,][["id"]],
+                                col_name,
+                                "indel",
+                                before,
+                                after)
     }
   }
 
@@ -112,7 +129,12 @@ repl.data.frame <- function(df, n_errors, col_names){
       before <- df %>% filter(row_number() %in% rows) %>% pull(col_name)
       after <- before %>% repl()
       df[rows, col_name] <- after
-      df <- update_error_record(df, df$id[rows], col_name, "repl", before, after)
+      df <- update_error_record(df,
+                                df[ids %in% candidate_ids,][["id"]],
+                                col_name,
+                                "repl",
+                                before,
+                                after)
     }
   }
 
@@ -158,13 +180,15 @@ repl.default <- function(edit_string, error_chars = letters){
 }
 
 tpose_eligible <- function(items){
-  mat <- str_split(items, "", simplify = T)
-  unique_letters <-
-    map_int(1:nrow(mat), function(x){
-      letters <- mat[x, ]
-      letters[letters != ""] %>% unique() %>% length()
-    })
-  unique_letters > 1
+  # mat <- str_split(items, "", simplify = T)
+  # unique_letters <-
+  #   map_int(1:nrow(mat), function(x){
+  #     letters <- mat[x, ]
+  #     letters[letters != ""] %>% unique() %>% length()
+  #   })
+  # unique_letters > 1
+  cnt_letters <- c(letters, LETTERS, " ")
+  map_int(items, ~sum(!!str_count(., cnt_letters))) > 1
 }
 
 
@@ -229,10 +253,13 @@ tpose.base <- function(edit_string){
     str_split("") %>%
     .[[1]]
 
+  rand_range <- 2:length(edit_string)
+
   if(edit_string %>% unique() %>% length() > 1){
     while(edit_string[tpose_index] == edit_string[tpose_index_l]){
-      tpose_index <- sample(2:length(edit_string), 1)
+      tpose_index <- sample(rand_range, 1)
       tpose_index_l <- tpose_index - 1
+      # rand_range <- rand_range[rand_range != tpose_index]
     }
   } else{
     warning("All charcters are the same. tpose is not valid!")

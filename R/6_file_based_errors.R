@@ -16,7 +16,7 @@ married_name_change <- function(df, n_errors, lname, sex, dob = NULL, age = NULL
   # browser()
   candidate_ids <- sample(df_s$id, n_errors)
 
-  old_lnames <- df[[lname]][df$id %in% candidate_ids]
+  old_lnames <- df[df$id %in% candidate_ids,][[lname]]
   new_names <- lnames_all %>%
     sample(length(candidate_ids))
 

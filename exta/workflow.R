@@ -7,7 +7,7 @@ set.seed(1)
 
 #########################################################################
 # YANCEY county
-apr13 <- read.csv("apr13.csv")
+apr13 <- read.csv("exta/apr13.csv")
 
 ## bigest city in ncv
 #df <- ncv[which(ncv$city == tail(names(sort(table(ncv$city))), 1)),]
@@ -23,7 +23,8 @@ df <- df[!duplicated(df[2:6]),]
 
 ####### make twins #######
 
-df_t <- df %>%
+df_t <-
+  df %>%
   prepare_data() %>%
   make_twins()
 error_record <- attr(df_t, "error_record")

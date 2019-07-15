@@ -95,3 +95,62 @@ ch1_to_ch2 <- function(df, n_errors, col_names, ch1, ch2, all = T){
   df %>%
     select(one_of(org_colnames))
 }
+
+
+make_missing <- function(df, n_errors, col_names){
+  n <- seq_len(nrow(df))
+  p <- length(col_names)
+  errors_col <- floor(n_errors/p)
+
+  if((n_errors < nrow(df)*p) && (errors_col > 0)) {
+    for(i in seq_len(p)) {
+
+      # rows <- sample(n, errors_col)
+      ids <- df[["id"]]
+      col_name <- col_names[i]
+      df_error_record <- attr(df, "error_record")
+      id_errs_prev <-
+        df_error_record %>%
+        filter(field == col_name) %>%
+        pull(id) %>%
+        unique()
+      id_pool <- setdiff(ids, id_errs_prev)
+      candidate_ids <- sample(id_pool, errors_col)
+      before <- df[ids %in% candidate_ids, ][[col_name]]
+      after <- NA
+      df[ids %in% candidate_ids, col_name] <-  after
+      df <- update_error_record(df,
+                                df[ids %in% candidate_ids, ][["id"]],
+                                col_name,
+                                "missing",
+                                before,
+                                "")
+    }
+  } else {
+    for(i in seq_len(n_errors)){
+      rows <- sample(n, 1)
+      col_name <- sample(col_names, 1)
+      before <- df%>% filter(row_number() %in% rows) %>% pull(col_name)
+      after <- NA
+      df[rows, col_name] <-  after
+      df <- update_error_record(df, df$id[rows], col_name, "missing", before, "")
+    }
+  }
+
+  df
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -45,9 +45,14 @@ mess_data <- function(x, ...){
   UseMethod("mess_data")
 }
 
-mess_data.data.frame <- function(df_data, error_lookup){
+mess_data.data.frame <- function(df_data, error_lookup, add_counting_dups = F, verbose = T){
 
-  n <- nrow(df_data)
+  if(add_counting_dups){
+    n <- add_counting_dups
+  } else {
+    n <- nrow(df_data)
+  }
+
   attr(df_data, "error_record") <- tribble(~id,
                                            ~field,
                                            ~error,
@@ -59,7 +64,10 @@ mess_data.data.frame <- function(df_data, error_lookup){
 
     error_function <- error_lookup[i,] %>% pull(1)
 
-    message(error_function)
+    if(verbose){
+      message()
+      message(error_function)
+    }
 
     #setting the arguments to be passed to do.call one by one
 
@@ -82,23 +90,37 @@ mess_data.data.frame <- function(df_data, error_lookup){
       arguments <- append(arguments, as.list(parse(text=paste0("f(", error_lookup[i,] %>% pull(4) , ")"))[[1]])[-1])
     }
 
-    # if(error_function == "date_transpose") browser()
+    # message(lsf.str())
 
-    df_data <- do.call(error_function, args = arguments)
+    funcs_global <- lsf.str(envir = globalenv()) %>% as.vector()
+    if(error_function %in% funcs_global){
+      df_data <- do.call(error_function, args = arguments, envir = globalenv())
+    } else {
+      df_data <- do.call(error_function, args = arguments)
+    }
 
-    # print(attr(df_data, "error_record"))
+    if(verbose){
+      print(attr(df_data, "error_record") %>% tail())
+    }
 
   }
 
   df_data
 }
 
-mess_data.df_pairs <- function(df_pairs, error_lookup){
+mess_data.df_pairs <- function(df_pairs, error_lookup, add_counting_dups = F, ...){
   # browser()
-  df_pairs$df_secondary <- mess_data(df_pairs$df_secondary,
-                                     error_lookup %>% filter(error != "add_duplicates"))
+  n <- nrow(df_pairs$df_original)
+
   e <- error_lookup %>% filter(error == "add_duplicates") %>% pull(amount)
-  if(e < 1) e <- ceiling(e*nrow(df_pairs$df_original))
+  if(e < 1) e <- ceiling(e*n)
+
+  if(add_counting_dups) add_counting_dups <- n + e
+
+  df_pairs$df_secondary <- mess_data(df_pairs$df_secondary,
+                                     error_lookup %>% filter(error != "add_duplicates"),
+                                     add_counting_dups = add_counting_dups, ...)
+
   df_pairs %>%
     add_duplicates(e)
   # df_pairs
