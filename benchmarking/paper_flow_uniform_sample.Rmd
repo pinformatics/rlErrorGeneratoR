@@ -1,0 +1,638 @@
+---
+title: "Paper flow dob latest"
+author: "Gurudev Ilangovan"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document: 
+    df_print: tibble
+    highlight: tango
+    theme: flatly
+    toc: yes
+    toc_depth: 5
+    toc_float: 
+      collapsed: false
+      smooth_scroll: true
+    number_sections: true 
+    code_folding: hide
+---
+
+```{r setup, results="hide"}
+knitr::opts_chunk$set(cache = F, message = FALSE)
+source("R/paper2/utils.R")
+theme_set(theme_light())
+```
+
+# Error Generation
+
+## Preprocessing
+
+```{r preprocess}
+
+# df_dob <- 
+#   read_csv("data/paper2/raw/dob.csv", 
+#              col_types = cols(voter_registration_number = "c")) %>% 
+#   select(voter_reg_num = voter_registration_number, dob = bday, twin_dob = twin_bday, twin_id) %>% mutate(twin_id = ifelse(is.na(twin_dob), NA, twin_id))
+
+(df_dob <- 
+  read_csv("data/paper2/raw/dob.csv") %>% 
+   rename(dob = bday))
+
+(df_a <- 
+    read_delim("data/paper2/raw/apr13.txt", delim = "\t") %>% 
+    rename(name_suffix = name_sufx_cd,
+           mname = midl_name) %>% 
+    mutate_if(is.character, str_squish))
+
+  
+(df_b <- 
+    read_delim("data/paper2/raw/mar17.txt", delim = "\t") %>% 
+    rename(name_suffix = name_suffix_lbl,
+           mname = middle_name) %>% 
+    mutate_if(is.character, str_squish))
+
+df_error_dist <- read_csv("R/paper2/error_table.csv")
+
+```
+
+```{r}
+set.seed(37)
+df_messed_collection <- 
+  tibble(error_percent = seq(0, 0.6, 0.05)) %>% 
+  print() %>% 
+  mutate(
+    ls_egen = map(error_percent, function(e){
+      message(glue("\n\nerror percent target: {e}"))
+      generate_error(df_a, 
+                     df_b, 
+                     df_dob, 
+                     df_error_dist, 
+                     e, 
+                     err_mult = 1,
+                     err_mult_inc = 0.01)
+    })
+  ) %>% 
+  print() %>% 
+  mutate(df_a_mod = map(ls_egen, "df_a_mod"),
+         df_b_mod = map(ls_egen, "df_b_mod"),
+         df_error_record = map(ls_egen, "df_error_record"),
+         err_mult = map_dbl(ls_egen, "err_mult"),
+         percent_error_ids = map_dbl(ls_egen, "percent_error_ids"),
+         percent_errors = map_dbl(ls_egen, "percent_errors")) %>% 
+  print() %>% 
+  mutate(
+         df_pairs = pmap(list(a = df_a_mod, 
+                              b = df_b_mod, 
+                              e = error_percent), function(a, b, e){
+           generate_pairs(a, b, data_pref = glue("percent_{e*100}"))
+         }),
+         size = map_int(df_pairs, nrow)) %>% 
+  print()
+
+df_messed_collection %>% 
+  write_rds("data/paper2/df_messed_collection.rds")
+```
+
+```{r}
+df_messed_collection <-  
+  read_rds("data/paper2/df_messed_collection.rds")
+```
+
+# Feature Engineering
+
+Using a function called add_feature_vector to generate features. 
+
+```{r}
+df_messed_collection <-
+  df_messed_collection %>% 
+  # slice(13) %>% 
+  mutate(df_feature = pmap(list(df_pair = df_pairs, 
+                                df_a = df_a_mod,
+                                df_b = df_b_mod), 
+                           function(df_pair, df_a, df_b){
+    # browser()
+    message(glue("calculating feature vector for {nrow(df_pair)} records"))
+    st <- Sys.time()
+    df_res <- 
+      df_pair %>%
+      # sample_n(500) %>%
+      add_feature_vector(df_a, df_b) %>%
+      select(starts_with("metric"), match) %>%
+      mutate(match = match %>% factor(levels = c("unmatch", "match"))) %>%
+      as.data.frame()
+    message(glue("{difftime(Sys.time(), st, units = 'mins')} minutes elapsed"))
+    df_res
+  }))
+  
+df_messed_collection <- 
+  df_messed_collection %>% 
+  mutate(size = df_feature %>% map_int(~(nrow(.))))
+
+df_messed_collection$size
+
+df_messed_collection %>%
+  write_rds("data/paper2/df_feature_collection.rds")
+  
+ df_messed_collection
+```
+
+```{r read df_feature_collection, echo=FALSE}
+(df_messed_collection <- 
+  read_rds("data/paper2/df_feature_collection.rds"))
+```
+
+One df_feature dataframe looks like these.
+```{r view df_feature}
+df_messed_collection$df_pairs[[7]] %>% 
+  select(-pair_id) %>% 
+  filter_na_rows() %>% 
+  add_feature_vector()
+
+df_messed_collection$df_feature[[7]] %>% 
+  select(nzv(df_messed_collection$df_feature[[7]])) %>% 
+  View()
+```
+
+
+# Modeling
+
+## Modeling setup
+
+```{r train_test_split}
+sample_strat <- function(df, n = 2000){
+  match <- df$match
+  row_num <- 1:nrow(df)
+  
+  m = ceiling(n/5)
+  u = n - m
+  
+  indices_m = sample(row_num[match == "match"], m)
+  indices_u = sample(row_num[match == "unmatch"], u)
+  
+  sample(c(indices_u, indices_m), n)
+}
+
+# df_all <- 
+#   df_messed_collection$df_feature[[2]]
+
+set.seed(23)
+df_messed_collection <- 
+  df_messed_collection %>% 
+  mutate(train_indices = map(df_feature, sample_strat, n = 2000),
+         test_indices = map2(df_feature, train_indices, function(df, t){
+           (1:nrow(df))[-t]
+         }),
+         df_train = map2(df_feature, train_indices, function(df, t){
+           df[t, ]
+         }),
+         df_test =  
+           pmap(list(df_pairs, df_feature, test_indices), 
+                         function(pairs, df, v){
+                           bind_cols(pairs, df) %>% # 
+                             mutate(match = 
+                                      match %>% 
+                                      factor(levels = c("unmatch", 
+                                                        "match"))) %>%
+                             as.data.frame() %>% 
+                             .[v, ]
+                         }))
+
+
+train_control <- 
+  trainControl(method = "cv", 
+               number = 10,
+               verboseIter = T,
+               savePredictions = TRUE,
+               classProbs = TRUE)
+```
+
+
+```{r}
+  
+df_messed_collection_mod <- 
+  df_messed_collection %>% 
+  # slice(2) %>%
+  mutate(
+    model_rf = pmap(list(e = error_percent,
+                         df_tr = df_train,
+                         df_ts = df_test),
+                    function(e, df_tr, df_ts){
+      message(glue("rf-{e}"))
+      # browser()
+      set.seed(3)
+      model <-
+        train(
+            match ~ ., 
+            data = df_tr,
+            trControl = train_control,
+            tuneGrid = expand.grid(.mtry = seq(3, 15, 2)),
+            importance = TRUE,
+            keep.forest= TRUE,
+            preProcess = c("medianImpute"),
+            ntree = 350,
+            method = "rf",
+            na.action = na.pass)
+      print(model)
+      print(caret::confusionMatrix(df_ts$match,
+                                   predict(model, df_ts,
+                                           na.action = na.pass),
+                                   positive = "match"))
+      model
+    }),
+    model_svm_radial = pmap(list(
+                                 e = error_percent,
+                                 df_tr = df_train,
+                                 df_ts = df_test),
+                            function(e, df_tr, df_ts){
+      # browser()
+      message(glue("svmRadial-{e}"))
+      set.seed(13)
+      model <-
+        train(
+            # x = df_tr[, -ncol(df_tr)],
+            # y = df_tr[, "match"],
+            match ~ ., 
+            data = df_tr,
+            trControl = train_control,
+            preProcess = c("medianImpute"),
+            method = "svmRadial",
+            na.action = na.pass)
+      print(model)
+      print(caret::confusionMatrix(df_ts$match,
+                                   predict(model,
+                                           newdata = df_ts,
+                                           na.action = na.pass),
+                                   positive = "match"))
+      model
+    }),
+    model_svm_linear = pmap(list(
+                                 e = error_percent, 
+                                 df_tr = df_train, 
+                                 df_ts = df_test), 
+                            function(e, df_tr, df_ts){
+      message(glue("svmLinear-{e}"))
+      # browser()
+      set.seed(13)
+      model <-
+        train(
+            # x = df_tr[, -ncol(df_tr)],
+            # y = df_tr[, "match"],
+            match ~ ., 
+            data = df_tr,
+            trControl = train_control,
+            preProcess = c("medianImpute"),
+            method = "svmLinear",
+            na.action = na.pass)      
+      print(model)
+      print(caret::confusionMatrix(df_ts$match, 
+                                   predict(model, df_ts, 
+                                           na.action = na.pass),
+                                   positive = "match"))
+      model
+    })
+  )
+  
+
+
+
+df_messed_collection_mod %>% 
+  write_rds("data/paper2/df_messed_collection_models.rds")
+  
+df_messed_collection
+```
+
+```{r read_models,echo=FALSE}
+(df_messed_collection_mod <- 
+  read_rds("data/paper2/df_messed_collection_models.rds"))
+
+df_messed_collection_mod <- 
+  df_messed_collection_mod %>% 
+  gather(model, model_obj, starts_with("model")) %>% 
+  select(model, everything()) %>% 
+  mutate(model = model %>% str_replace("model_", ""))
+```
+
+
+```{r test_set_evaluation}
+df_messed_collection <- 
+  df_messed_collection_mod %>%
+  rename(error_rate = error_percent) %>% 
+  mutate(
+    results = map2(model_obj, df_test, function(model, df){
+      df %>%
+      mutate(pair_id = 1:nrow(.)) %>%
+      evaluate_model(model, df_test = ., plot_roc = F)
+    }),
+    metrics = map(results, ~.x$metrics$df_metric_table),
+    confusion_matrix = map(results, ~.x$metrics$confusion_matrix),
+    roc_curve = map(results, ~.x$metrics$roc_curve),
+    pred_confidence = map(results, ~.x$confidence),
+    error_rate =
+           error_rate %>%
+           as.character() %>%
+           fct_inorder()
+  )
+
+
+df_model_metrics <-
+  df_messed_collection %>%
+  select(model, error_rate, metrics) %>%
+  unnest(metrics) %>% 
+  mutate(error_rate =
+           error_rate %>% 
+           as.character() %>% 
+           fct_inorder())
+
+df_model_metrics %>% 
+  spread(error_rate, value) %>% 
+  filter(metric %in% 
+           c(c("accuracy", "precision", "recall", "f1","auc", "brier")))
+
+
+
+plot_roc_all(df_messed_collection %>% 
+              filter(model == "svm_radial"),
+             model_col = error_rate)
+
+# df_model_metrics %>%
+#   filter(metric %in% 
+#            c("accuracy", "precision", "recall", "f1","auc", "brier")) %>%
+#   ggplot(aes(error_rate, value, group = model, col = model)) +
+#   geom_line() +
+#   geom_point() +
+#   scale_y_continuous(breaks = seq(0, 1, 0.2), 
+#                      limits = c(0, 1), 
+#                      minor_breaks = NULL)+
+#   facet_wrap(~metric) +
+#   theme_light()
+
+# df_model_metrics %>% 
+#   filter(metric %in% c("accuracy", "precision", "recall", "f1","auc")) %>%
+#   ggplot(aes(model, value, fill = model)) +
+#   geom_col(position = "dodge") +
+#   facet_grid(error_rate~metric) +
+#   coord_flip()
+
+df_model_metrics %>% filter(model == "rf", error_rate == 0.6)
+
+#line plots
+df_model_metrics %>% 
+  filter(metric %in% c("f1", "precision", "recall")) %>% 
+  ggplot(aes(error_rate, value, fill = model, col = model, group = model)) +
+  geom_path() +
+  geom_point() +
+  scale_y_continuous(limits = c(0.8,1)) +
+  facet_wrap(~metric, ncol = 1) +
+  labs(x = "Error rate",
+       y = "value") +
+  scale_color_tableau()
+
+ggsave("R/paper2/plots/rateVf1.png", 
+       dpi = 100, height = 15, width = 10, units = "in")
+
+
+df_model_metrics %>% 
+  filter(metric == "brier") %>% 
+  ggplot(aes(error_rate, value, fill = model, col = model, group = model)) +
+  geom_path() +
+  geom_point() +
+  scale_y_continuous(limits = c(0,0.04)) +
+  labs(x = "Error rate",
+       y = "Brier score") +
+  scale_color_tableau()
+
+ggsave("R/paper2/plots/rateVbrier.png", 
+       dpi = 100, height = 8, width = 8, units = "in")
+
+#bar plots
+df_model_metrics %>% 
+  filter(metric == "brier") %>% 
+  ggplot(aes(error_rate, value, fill = model)) +
+  geom_col(position = "dodge")
+
+df_confs <- 
+  df_messed_collection %>% 
+  mutate(conf = map(results, function(x){
+    x$data$df_preds_aug %>% select(-match1)
+  })) %>% 
+  select(model, error_rate, conf) %>% 
+  unnest() %>% 
+  mutate(
+    match_pred = match_pred %>% fct_rev(),
+    grade = (match_pred == match) %>% as.integer(),
+    brier = (ifelse(match == "match", 1, 0) - match_prob)^2
+    )
+
+
+         
+
+calc_review_percent <- function(df_conf, value = 0.99){
+  # browser()
+  t <- 0.25
+  df_thresh <- 
+    df_conf %>% 
+    filter(match_prob <= t | match_prob >= (1-t))
+  
+  while((F1_Score(df_thresh$match, 
+                 df_thresh$match_pred, 
+                 positive = "match") <= value) &
+        (nrow(df_thresh) > 0)){
+    if(t > 0.01){
+      t <- t - 0.01
+    } else {
+      t <- t - 0.001
+    }
+    
+    df_thresh <- 
+      df_conf %>% 
+      filter(match_prob <= t | match_prob >= (1-t))
+  }
+  
+  n_review <- 
+    df_conf %>% 
+    anti_join(df_thresh, by = "pair_id") %>% 
+    nrow(.)
+  n_review_percent <- n_review/nrow(df_conf) 
+  # print(n_review_percent)
+  n_review_percent
+}
+
+df_review <- 
+  df_confs %>% 
+  group_by(error_rate, model) %>% 
+  nest() %>% 
+  # slice(15) %>%
+  mutate(review_percent = 
+           pmap_dbl(list(e = error_rate, m = model, d = data),
+                    function(e, m, d){
+                      message(glue("{m}-{e}"))
+                      p <- calc_review_percent(d)
+                      print(p)
+                      p
+                    }))
+
+p <- 
+  df_review %>% 
+  ggplot(aes(error_rate, 
+             review_percent, 
+             # group = model, 
+             # col = model,
+             fill = model)) +
+  geom_col(position = "dodge") +
+  scale_fill_tableau()
+
+ggplotly(p)
+
+ggsave("R/paper2/plots/rateVreview.png", 
+       dpi = 100, height = 6, width = 10, units = "in")
+
+df_confs %>% 
+  filter(error_rate == 0.3, model == "svm_radial") %>% 
+  calc_review_percent()
+
+df_confs %>% 
+  sample_n(nrow(.)) %>% 
+  group_by(model, error_rate, match, match_pred) %>% 
+  ggplot(aes(error_rate, match_prob, col = model, group = model)) +
+  geom_jitter(height = 0, alpha = 0.1) +
+  geom_smooth() +
+  facet_grid(match ~ match_pred)
+
+df_conf_sum <- 
+  df_confs %>% 
+  group_by(model, error_rate, match, match_pred) %>% 
+  summarise(mean_prob = mean(match_prob),
+            median_prob = median(match_prob))
+
+df_conf_sum %>% 
+  filter(error_rate == 0.3) %>% 
+  group_by(model, match_pred) %>% 
+  summarise(diff_prob = abs(first(mean_prob) - last(mean_prob)))
+  
+df_conf_sum %>% 
+  ggplot(aes(error_rate, mean_prob, col = model, group = model)) +
+  geom_line() +
+  facet_grid(match ~ match_pred)
+  
+
+df_confs %>% 
+  mutate(prob_review = match_prob %>% between(0.30, 0.70)) %>% 
+  group_by(error_percent, model) %>% 
+  summarise(review_percent = sum(prob_review)/n()) %>% 
+  ggplot(aes(error_percent, review_percent, fill = model)) +
+  geom_col(position = "dodge")
+
+df_confs %>% 
+  ggplot(aes(error_percent, match_prob)) +
+  geom_boxplot() +
+  facet_grid(grade~match_pred)
+
+df_confs %>% 
+  group_by(error_percent, model) %>% 
+  summarise(brier = mean(brier)) %>%
+  ggplot(aes(error_percent, brier, fill = model)) +
+  geom_col(position = "dodge")
+
+df_confs %>% 
+  ggplot(aes(error_percent, brier)) +
+  geom_jitter(height = 0, alpha = 0.5) +
+  facet_wrap(~model)
+
+df_model_metrics %>% 
+  filter(metric == "accuracy") %>% 
+  ggplot(aes())
+
+```
+
+
+## Size of labeled data 
+
+```{r}
+df_error_pl <- 
+  df_messed_collection_mod %>% 
+  mutate(error_rate =
+           error_percent %>%
+           as.character() %>%
+           fct_inorder(),
+         size_match =
+           map_dbl(df_pairs,
+                   function(df_pair){
+                     mean(df_pair$match == "match")
+                   }))
+  
+  
+df_error_pl%>%
+  filter(model == "rf") %>% 
+  select(error_rate, df_pairs) %>% 
+  unnest() %>% 
+  mutate(match = match) %>%
+  ggplot(aes(error_rate, fill = match)) +
+  geom_bar() +
+  theme_light() +
+  scale_y_continuous(breaks = seq(0, 45000, 10000)) +
+  scale_fill_tableau()
+
+ggsave("R/paper2/plots/rateVsize.png", dpi = 500, height = 8, width = 10)
+```
+
+```{r}
+df_error_pl %>% 
+  mutate(size = map_int(df_a_mod, nrow)) %>%
+  select(error_rate, df_error_record, size) %>% 
+  unnest() %>% 
+  group_by(error_rate, size) %>% 
+  summarise(n = n()) %>% 
+  ungroup() %>% 
+  add_row(error_rate = 0, size = nrow(df_error_pl$df_a_mod[[1]]), n = 0) %>% 
+  arrange(error_rate) %>% 
+  mutate(error_rate =
+           error_rate %>%
+           as.character() %>%
+           fct_inorder(),
+         prop = n/size) %>% 
+  ggplot(aes(error_rate, n, group = 1)) +
+  geom_path() +
+  theme_light() +
+  labs(
+    x = "Error rate",
+    y = "Number of errors introduced",
+    subtitle = "Number of records ~ 16500"
+  )
+
+ggsave("R/paper2/plots/rateVraw_errors.png", 
+       dpi = 100, height = 8, width = 8, units = "in")
+p <- 
+  df_error_pl %>% 
+  select(error_rate, df_a_mod) %>% 
+  unnest() %>% 
+  select(error_rate, id_a) %>% 
+  left_join(
+    df_error_pl %>% 
+    # mutate(size = map_int(df_a_mod, nrow)) %>%
+    select(error_rate, df_error_record, size) %>% 
+    unnest() %>% 
+    group_by(error_rate) %>% 
+    count(id) %>% 
+    ungroup(),
+    by = c("error_rate", "id_a" = "id")) %>% 
+  mutate(num_errors_in_record = 
+           ifelse(is.na(n), 0, n) %>% as.factor() %>% fct_rev()) %>% 
+  ggplot(aes(error_rate, fill = num_errors_in_record)) +
+  geom_bar(position = "fill") +
+  # scale_fill_manual(values = lacroix_palette(5, type = "discrete")) +
+  scale_fill_tableau(guide = guide_legend(
+    title = 
+    "Number of errors
+    in a record"
+  )) +
+  theme_light() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(x = "Error rate", y = "Percent of records with n errors") +
+  theme()# text = element_text(size = 20)
+
+p
+
+ggsave("R/paper2/plots/rateVerrors.png", width = 10, height = 8, dpi = 100)
+
+ggplotly(p)
+```
+

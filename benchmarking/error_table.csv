@@ -1,0 +1,22 @@
+error,amount,col_names,arguments
+make_twins, 0.05,,
+indel, .047, fname,
+repl, .047, fname,
+tpose, .046, fname,
+invert_real_and_nicknames, 0.05, fname,
+indel, .047, lname,
+repl, .047, lname,
+tpose, .046, lname,
+married_name_change, .24, ,"lname = 'lname', sex = 'gender_code', age = 'birth_age'"
+add_name_suffix, .05,, "lname = 'lname', sex = 'gender_code'"
+swap_fields,.05,"fname, lname",
+date_swap,.05,,date='dob'
+date_replace, .03,,"date = 'dob', token = 'month'"
+date_replace, .03,,"date = 'dob', token = 'day'"
+date_transpose,.03,,"date = 'dob', token = 'day'"
+date_replace, .03,,"date = 'dob', token = 'year'"
+date_transpose,.03,,"date = 'dob', token = 'year'"
+make_missing, 0.017, fname,
+make_missing, 0.017, lname,
+make_missing, 0.017, dob,
+add_duplicates,.03,,
